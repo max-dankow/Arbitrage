@@ -45,7 +45,7 @@ void CArbitrageFinder::printExchangeRate() const
     std::cout << '\n';
 }
 
-std::vector<size_t> CArbitrageFinder::restoreCycle(const std::vector<ssize_t> &predecessor, size_t inCycle) const
+std::vector<size_t> CArbitrageFinder::restoreWay(const std::vector<ssize_t> &predecessor, size_t inCycle) const
 {
     ssize_t current = inCycle;
     std::vector<bool> visited(currencyNumber, false);
@@ -94,7 +94,7 @@ bool CArbitrageFinder::algorithmBellmanFord(size_t startPoint, std::vector<size_
         {
             if (distance[edgeFrom] * exchangeRate[edgeFrom][edgeTo] > distance[edgeTo])
             {
-                cycle = restoreCycle(predecessor, edgeTo);
+                cycle = restoreWay(predecessor, edgeTo);
                 return true;
             }
         }
@@ -102,10 +102,32 @@ bool CArbitrageFinder::algorithmBellmanFord(size_t startPoint, std::vector<size_
     return false;
 }
 
+std::vector<size_t> CArbitrageFinder::restoreWay(const std::vector<std::vector<ssize_t> > &next, size_t start, size_t finish) const
+{
+    size_t current = next[start][finish];
+    std::vector<size_t> way;
+    way.push_back(finish);
+    while (current != start)
+    {
+        way.push_back(current);
+        current = next[start][current];
+    }
+    way.push_back(start);
+    std::reverse(way.begin(), way.end());
+    return way;
+}
+
 bool CArbitrageFinder::algorithmFloydWarshall(std::vector<size_t> &cycle) const
 {
     std::vector<std::vector<double> > distance(exchangeRate);
-    std::vector<std::vector<ssize_t> > parent(currencyNumber, std::vector<ssize_t>(currencyNumber, -1));
+    std::vector<std::vector<ssize_t> > next(currencyNumber, std::vector<ssize_t>(currencyNumber));
+    for (size_t i = 0; i < currencyNumber; ++i)
+    {
+        for (size_t j = 0; j < currencyNumber; ++j)
+        {
+            next[i][j] = i;
+        }
+    }
     for (size_t k = 0; k < currencyNumber; ++k)
     {
         for (size_t i = 0; i < currencyNumber; ++i)
@@ -114,25 +136,34 @@ bool CArbitrageFinder::algorithmFloydWarshall(std::vector<size_t> &cycle) const
             {
                 if (distance[i][j] < distance[i][k] * distance[k][j])
                 {
-                    distance[i][j] = distance[i][k] + distance[k][j];
-                    parent[i][j] = k;
+                    distance[i][j] = distance[i][k] * distance[k][j];
+                    next[i][j] = next[k][j];
                 }
             }
         }
     }
-    /*for (int i = 0; i < currencyNumber; ++i)
+    for (size_t i = 0; i < currencyNumber; ++i)
     {
-        for (int j = 0; j < currencyNumber; ++j)
+        if (distance[i][i] > 1)
         {
-            for (int t = 0; t < currencyNumber; ++t)
-            {
-                if (distance[i][t] < INF && distance[t][t] < 0 && distance[t][j] < INF)
-                {
-                    distance[i][j] = -INF;
-                }
-            }
+            cycle = restoreWay(next, i, i);
+            return true;
         }
-    }*/
+    }
+    return false;
+}
+
+bool CArbitrageFinder::findArbitrageSequence(std::vector<size_t> &cycle, int algo) const
+{
+    if (algo == ALG_FORD_BELLMAN)
+    {
+        return algorithmBellmanFord(0, cycle);
+    }
+    if (algo == ALG_FLOYD_WARSHALL)
+    {
+        return algorithmFloydWarshall(cycle);
+    }
+    return false;
 }
 
 double CArbitrageFinder::checkArbitrage(const std::vector<size_t> &cycle, double start_sum) const
@@ -145,8 +176,8 @@ double CArbitrageFinder::checkArbitrage(const std::vector<size_t> &cycle, double
         std::cout << "Exchange " << money << " (" << cycle[i - 1] << ") to " << money * exchangeRate[cycle[i - 1]][cycle[i]] << " (" << cycle[i] << ")\n";
         money *= exchangeRate[cycle[i - 1]][cycle[i]];
     }
-    /*std::cout << "Exchange " << money << " (" << cycle[cycle.size() - 1] << ") to " << money * exchangeRate[cycle[cycle.size() - 1]][cycle[0]] << " (" << cycle[0] << ")\n";*/
     money *= exchangeRate[cycle[cycle.size() - 1]][cycle[0]];
     std::cout << "You get " << money << " (" << cycle[0] << ")\n";
+    assert(money > start_sum);
     return money;
 }

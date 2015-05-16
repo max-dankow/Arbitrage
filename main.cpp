@@ -13,8 +13,24 @@ int main()
             break;
         }
         std::vector<size_t> cycle;
-        solver.algorithmFloydWarshall(cycle);
-        if (solver.algorithmBellmanFord(0, cycle))
+        std::cout << "Ford-Bellman:\n";
+        if (solver.findArbitrageSequence(cycle, ALG_FORD_BELLMAN))
+        {
+            for (size_t point : cycle)
+            {
+                std::cout << point + 1 << ' ';
+            }
+            std::cout << '\n';
+            solver.checkArbitrage(cycle, 1);
+        }
+        else
+        {
+            std::cout << "no arbitrage sequence exists";
+        }
+        std::cout << '\n';
+
+        std::cout << "Floyd-Warshall:\n";
+        if (solver.findArbitrageSequence(cycle, ALG_FLOYD_WARSHALL))
         {
             for (size_t point : cycle)
             {
